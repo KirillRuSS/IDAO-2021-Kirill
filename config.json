@@ -6,6 +6,7 @@
     "input_shape": [40, 40, 2],
     "batch_size": 16,
     "class_count": 12,
+    "file_prefix": "train",
 
     "epochs": 300,
     "gpu": {

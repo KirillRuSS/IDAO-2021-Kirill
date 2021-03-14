@@ -1,5 +1,7 @@
 import gc
 import random
+import time
+
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -31,25 +33,24 @@ def main():
         metrics=metrics
     )
 
+    tb = k.callbacks.TensorBoard(
+        log_dir='logs/{}{}_logs'.format(time.strftime('%Y_%m_%d_%H_%M_%S_'), c.FILE_PREFIX),
+        write_graph=True,
+        update_freq='batch'
+    )
+
+    callbacks = [
+        tb,
+    ]
+
 
     x, y = get_train_data()
-    x = np.array(x)
-    y = np.array(y)[:, 1].reshape((-1, 1)).astype(np.float)
+    y = y[:, 1].reshape((-1, 1)).astype(np.float)
 
-    model.fit(x, y, epochs=c.EPOCHS, verbose=1, batch_size=c.BATCH_SIZE, validation_split=0.3)
+    model.fit(x, y, epochs=c.EPOCHS, verbose=1, batch_size=c.BATCH_SIZE, validation_split=0.3, callbacks=callbacks)
 
-    print(model.predict(x[:30]))
-    print(y[:30])
-    inp = model.input  # input placeholder
-    outputs = [layer.output for layer in model.layers]  # all layer outputs
-    functors = [k.backend.function([inp], [out]) for out in outputs]  # evaluation functions
     model.save("model.h5")
-
-    print(np.stack((y, model.predict(x)), axis=2).reshape(-1, 2).tolist())
-    # Testing
-    #for i in range(3):
-    #    layer_outs = [func([x[i:i+1]]) for func in functors]
-    #    print(layer_outs)
+    print(np.stack((y, model.predict(x)), axis=2).reshape(-1, 2)[:30])
 
 
 

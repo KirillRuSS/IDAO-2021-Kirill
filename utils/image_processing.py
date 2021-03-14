@@ -10,10 +10,14 @@ import scipy.ndimage
 import config as c
 
 
-def y_loader(file_path, reaction_type):
-    energy = float(re.search(r'\d+', re.search(r'_\d+_keV_', file_path)[0])[0])
-    offset = float(re.search(r'[\d.-]+', file_path)[0])
-    return [reaction_type, energy, offset]
+def y_loader(file_path, reaction_type) -> list:
+    if reaction_type == 'ER':
+        reaction_type = 0
+    else:
+        reaction_type = 1
+
+    energy = int(re.search(r'\d+', re.search(r'_\d+_keV_', file_path)[0])[0])
+    return [reaction_type, energy]
 
 
 def x_loader(file_path) -> np.ndarray:
@@ -50,6 +54,7 @@ def x_preprocessing(x: np.ndarray) -> np.ndarray:
     x -= 100
     x = np.stack((x, c.DIST_MATRIX), axis=2)
     x = x[270:310, 270:310, :] / 255
+    # x = x[250:330, 250:330, :] / 255
     return x.astype(np.float32)
 
 
@@ -58,16 +63,16 @@ def y_preprocessing(y: np.ndarray) -> np.ndarray:
     new_y[y] = 1
     return new_y
 
+
 def image_preprocessing(image):
     image = image[270:310, 270:310]
     image = sp.ndimage.filters.gaussian_filter(image, [1.0, 1.0], mode='constant')
     image = np.array(image) ** 30
-    #image = (image > np.quantile(image, 0.7)) * image + (image <= np.quantile(image, 0.7))*np.quantile(image, 0.7)
+    # image = (image > np.quantile(image, 0.7)) * image + (image <= np.quantile(image, 0.7))*np.quantile(image, 0.7)
     ##image = sp.ndimage.filters.gaussian_filter(image, [5.0, 5.0], mode='constant')
-    #image = np.array(image) ** 20
+    # image = np.array(image) ** 20
 
-
-    #image = image[0:100, 0:100]
-    #image = np.sum(np.gradient(image), axis=0) + image
-    #image[0, 0] = 0.005
+    # image = image[0:100, 0:100]
+    # image = np.sum(np.gradient(image), axis=0) + image
+    # image[0, 0] = 0.005
     return image.astype(np.float32)

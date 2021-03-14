@@ -1,10 +1,12 @@
 import json
+import multiprocessing
 
 __json = json.load(open('config.json', 'r'))
 
 DATASET_DIR = __json.get('dataset_dir')
 PREPROCESSING_DATA_DIR = __json.get('preprocessing_data_dir')
 SUBMISSION_CSV = __json.get('submission_csv')
+FILE_PREFIX = __json.get('file_prefix')
 
 TEST_SIZE = __json.get('test_size')
 INPUT_SHAPE = __json.get('input_shape')
@@ -27,5 +29,6 @@ if bool(REMOVE_PATH_VARS):
     except:
         pass
 
+NUM_CORES = multiprocessing.cpu_count()
 DIST_MATRIX = None
 SEED = 42

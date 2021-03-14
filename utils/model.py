@@ -34,6 +34,7 @@ def create_base_model(input_shape: Iterable = (None, None, None)) -> k.models.Mo
     x = input_layer
     x = k.layers.Conv2D(8, 1, activation='tanh')(x)
     x = k.layers.Conv2D(8, 3, activation='tanh', padding='same')(x)
+    x = k.layers.Conv2D(8, 3, activation='tanh', padding='same')(x)
     x = k.layers.Conv2D(8, 1, activation='tanh')(x)
     x = k.layers.Conv2D(2, 1, activation='tanh')(x)
     x = k.layers.Multiply()([input_layer, x])
