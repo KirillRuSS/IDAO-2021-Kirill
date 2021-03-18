@@ -47,15 +47,32 @@ def normalize_channels(img: np.array) -> np.ndarray:
     return img
 
 
-def x_preprocessing(x: np.ndarray) -> np.ndarray:
+def x_preprocessing(x: np.ndarray, input_shape, values_linear_transformation=True, center_by_max=False) -> np.ndarray:
     if c.DIST_MATRIX is None:
         c.DIST_MATRIX = np.mgrid[0:576:1, 0:576:1] - 288
         c.DIST_MATRIX = np.sum(c.DIST_MATRIX ** 2, axis=0) ** 0.5
-    x -= 100
+    if values_linear_transformation:
+        x -= 100
+        x /= 255
+
     x = np.stack((x, c.DIST_MATRIX), axis=2)
-    x = x[270:310, 270:310, :] / 255
-    # x = x[250:330, 250:330, :] / 255
+    #x = x[270:310, 270:310, :] / 255
+
+    x = crop_image(x, input_shape, center_by_max)
     return x.astype(np.float32)
+
+
+def crop_image(img, input_shape, center_by_max, center=None):
+    if center is None:
+        center = (img.shape[0]//2, img.shape[1]//2)
+    if center_by_max:
+        img_gaussian = sp.ndimage.filters.gaussian_filter(img[:, :, 0], [2.0, 2.0]) * (img[:, :, 1]<10)
+        center = (img_gaussian.argmax() // 576, img_gaussian.argmax() % 576)
+
+    cut_shape = (center[0] - input_shape[0] // 2, center[1] - input_shape[1] // 2,
+                 center[0] + input_shape[0] // 2, center[1] + input_shape[1] // 2)
+    img = img[cut_shape[0]:cut_shape[2], cut_shape[1]:cut_shape[3]]
+    return img.copy()
 
 
 def y_preprocessing(y: np.ndarray) -> np.ndarray:

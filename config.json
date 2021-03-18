@@ -3,12 +3,12 @@
     "preprocessing_data_dir": "C:\\Users\\Kirill\\Documents\\DataSets\\idao_dataset\\preprocessing_data",
     "submission_csv": "",
     "test_size": null,
-    "input_shape": [40, 40, 2],
+    "input_shape": [180, 180, 2],
     "batch_size": 16,
     "class_count": 12,
     "file_prefix": "train",
 
-    "epochs": 300,
+    "epochs": 600,
     "gpu": {
         "allow_growth": null,
         "per_process_gpu_memory_fraction": null

@@ -8,9 +8,9 @@ import config as c
 from utils.image_processing import *
 
 
-def get_x(file, data_dir, reaction_type):
+def get_x(file, data_dir, input_shape, values_linear_transformation=True, center_by_max=False):
     file_path = os.path.join(data_dir, file)
-    x = x_preprocessing(x_loader(file_path))
+    x = x_preprocessing(x_loader(file_path), input_shape, values_linear_transformation, center_by_max)
     return x
 
 
@@ -20,18 +20,25 @@ def get_y(file, data_dir, reaction_type):
     return y
 
 
-def get_train_data(available_energy_values=[1, 6, 20]) -> (list, list):
+def get_train_data(available_energy_values=[3, 10, 30],
+                   input_shape=c.INPUT_SHAPE,
+                   values_linear_transformation=True,
+                   center_by_max=False,
+                   short_load=False) -> (list, list):
     x, y = [], []
     for reaction_type in ['NR']:  # 'ER',
         data_dir = os.path.join(c.DATASET_DIR, 'train', reaction_type)
         for root, dirs, files in os.walk(data_dir):
-            x += Parallel(n_jobs=c.NUM_CORES)(delayed(get_x)(file, data_dir, reaction_type) for file in tqdm(files))
+            if short_load:
+                files = files[:300]
+            x += Parallel(n_jobs=c.NUM_CORES)\
+                (delayed(get_x)(file, data_dir, input_shape, values_linear_transformation, center_by_max) for file in tqdm(files))
             y += Parallel(n_jobs=c.NUM_CORES)(delayed(get_y)(file, data_dir, reaction_type) for file in tqdm(files))
 
     x = np.array(x)
     y = np.array(y)
 
-    available_data = np.isin(y[:,1], available_energy_values)
+    available_data = np.isin(y[:, 1], available_energy_values)
     x = x[available_data]
     y = y[available_data]
 
@@ -51,4 +58,4 @@ def get_test_data():  # -> np.ndarray:
 
 
 if __name__ == '__main__':
-    get_train_data()
+    get_train_data(center_by_max=True)

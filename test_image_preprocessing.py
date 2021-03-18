@@ -11,9 +11,9 @@ import matplotlib.image as mpimg
 
 
 def image_preprocessing(image):
-    image = image[270:310, 270:310]
-    image = sp.ndimage.filters.gaussian_filter(image, [1.0, 1.0], mode='constant')
-    image = np.array(image) ** 30
+    image = image[208:368, 208:368]
+    #image = sp.ndimage.filters.gaussian_filter(image, [1.0, 1.0], mode='constant')
+    #image = np.array(image) ** 30
     #image = (image > np.quantile(image, 0.7)) * image + (image <= np.quantile(image, 0.7))*np.quantile(image, 0.7)
     ##image = sp.ndimage.filters.gaussian_filter(image, [5.0, 5.0], mode='constant')
     #image = np.array(image) ** 20
@@ -53,7 +53,7 @@ for n in range(10):
                 axs[reaction_type, i + 1].imshow(img)
             """
             img = mpimg.imread(os.path.join(os.path.join(c.DATASET_DIR+'\\data', energy), path))
-            #img = image_preprocessing(img)
+            img = image_preprocessing(img)
             img *= 256
             #img = img*(img < 100)*(img > 90)# + img*(img > 102)
 
