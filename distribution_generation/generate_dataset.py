@@ -3,13 +3,15 @@ import random
 
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 
 
 import config as c
 from utils.dataset import get_train_data, get_test_data
 from distribution_generation import DistributionGenerator
 
-imgs, y = get_train_data(available_energy_values=[1, 3, 6, 10, 20, 30], input_shape=(576, 576), values_linear_transformation=False, center_by_max=False, short_load=True)
+
+imgs, y = get_train_data(available_energy_values=[1, 3, 6, 10, 20, 30], input_shape=(576, 576), values_linear_transformation=False, center_by_max=False, short_load=False)
 imgs = np.array(imgs)[:,:,:,0]
 y = np.array(y)[:, 1].reshape((-1, 1)).astype(np.float)
 
@@ -26,9 +28,10 @@ path_noise = os.path.join(dataset_dir, file_name_noise)
 
 dist_gen = DistributionGenerator(imgs, y)
 
-for i in range(100):
+for i in tqdm(range(100000)):
     noise = dist_gen.get_noise_img()
-    matrix, matrix_noise = dist_gen.get_distribution(0.99, 0.06, 0.9, random.random()*50, matrix_noise=noise.copy())
+    energy_limit = ((random.random() + 0.4) * 2.0)**3
+    matrix, matrix_noise = dist_gen.get_distribution(0.99, 0.06, 0.9, energy_limit, matrix_noise=noise.copy())
     file_name = str(i)
 
     im = Image.fromarray(matrix_noise).convert("L")

@@ -41,8 +41,14 @@ class DistributionGenerator:
         self.images = images
         self.images_energy = images_energy
 
+    def __get_noise_img_center(self):
+        center = np.random.randint(self.w//2, 576 - self.w//2, 2)
+        while 288 - self.w < center[0] < 288 + self.w and 288 - self.w < center[1] < 288 + self.w:
+            center = np.random.randint(self.w//2, 576 - self.w//2, 2)
+        return center
+
     def get_noise_img(self):
-        return crop_image(random.choice(self.images), (self.w, self.w), False, center=(self.w // 2, self.w // 2))
+        return crop_image(random.choice(self.images), (self.w, self.w), False, center=self.__get_noise_img_center())
 
     def get_distribution(self, sigma_r=0.99, average_r=0.06, p_eng=0.8, energy_limit=1.0, n=100000, matrix_noise=None):
         positions = np.random.normal(0.0, sigma_r, (n, 2)) * average_r
@@ -66,31 +72,6 @@ class DistributionGenerator:
             matrix_noise += matrix
         return matrix, matrix_noise
 
-    def calculate_distribution_score(self, coefficient, energy):
-        n = 1000
-        images_with_current_energy = self.images[self.images_energy == energy]
-
-        sigma_r, average_r, p_eng, energy_limit = coefficient[0], coefficient[1], coefficient[2], coefficient[3]
-        if not (0 < sigma_r < 1 and 0 < average_r < 1 and 0 < p_eng < 1 and 0 < energy_limit < 100):
-            return 1e6
-
-        self.get_distribution_spector(sigma_r=sigma_r,
-                                      average_r=average_r,
-                                      p_eng=p_eng,
-                                      energy_limit=energy_limit,
-                                      matrix_noise=self.get_noise_img())
-        distribution_spector = np.sum(Parallel(n_jobs=c.NUM_CORES)
-                                      (delayed(self.get_distribution_spector)(sigma_r=sigma_r,
-                                                                              average_r=average_r,
-                                                                              p_eng=p_eng,
-                                                                              energy_limit=energy_limit,
-                                                                              matrix_noise=self.get_noise_img()) for i in range(n)), axis=0)
-
-        imgs_spector = np.sum(Parallel(n_jobs=c.NUM_CORES)
-                              (delayed(get_img_spector)(crop_image(random.choice(images_with_current_energy), (self.w, self.w), False)) for i in range(n)), axis=0)
-
-        print(mean_squared_error(imgs_spector / n, distribution_spector / n))
-        return mean_squared_error(imgs_spector / n, distribution_spector / n)
 
     def get_distribution_spector(self, sigma_r=0.99, average_r=5.0, p_eng=0.2, energy_limit=1.0, matrix_noise=None):
         img_distribution = self.get_distribution(sigma_r=sigma_r,

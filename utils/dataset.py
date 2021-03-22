@@ -1,3 +1,4 @@
+import glob
 import os
 import re
 from tqdm import tqdm
@@ -20,13 +21,31 @@ def get_y(file, data_dir, reaction_type):
     return y
 
 
+def get_generated_data(short_load=False):
+    data_dir = os.path.join(c.DATASET_DIR, 'generated_data')
+
+    files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if re.match(r'[0-9]+.png', f)]
+    files_clean = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if re.match(r'[0-9]+_clean.png', f)]
+    files_noise = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if re.match(r'[0-9]+_noise.png', f)]
+
+    if short_load:
+        files = files[:30000]
+        files_clean = files_clean[:30000]
+        files_noise = files_noise[:30000]
+    images = np.array(Parallel(n_jobs=c.NUM_CORES)(delayed(x_loader)(file) for file in tqdm(files)))
+    images_clean = np.array(Parallel(n_jobs=c.NUM_CORES)(delayed(x_loader)(file) for file in tqdm(files_clean)))
+    images_noise = np.array(Parallel(n_jobs=c.NUM_CORES)(delayed(x_loader)(file) for file in tqdm(files_noise)))
+
+    return images, images_clean, images_noise
+
+
 def get_train_data(available_energy_values=[3, 10, 30],
                    input_shape=c.INPUT_SHAPE,
                    values_linear_transformation=True,
                    center_by_max=False,
                    short_load=False) -> (list, list):
     x, y = [], []
-    for reaction_type in ['NR']:  # 'ER',
+    for reaction_type in ['NR', 'ER']:
         data_dir = os.path.join(c.DATASET_DIR, 'train', reaction_type)
         for root, dirs, files in os.walk(data_dir):
             if short_load:
@@ -58,4 +77,4 @@ def get_test_data():  # -> np.ndarray:
 
 
 if __name__ == '__main__':
-    get_train_data(center_by_max=True)
+    get_generated_data(short_load=True)

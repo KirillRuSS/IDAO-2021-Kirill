@@ -66,7 +66,7 @@ def crop_image(img, input_shape, center_by_max, center=None):
     if center is None:
         center = (img.shape[0]//2, img.shape[1]//2)
     if center_by_max:
-        img_gaussian = sp.ndimage.filters.gaussian_filter(img[:, :, 0], [2.0, 2.0]) * (img[:, :, 1]<10)
+        img_gaussian = sp.ndimage.filters.gaussian_filter(img[:, :, 0], [3.0, 3.0]) * (img[:, :, 1]<10)
         center = (img_gaussian.argmax() // 576, img_gaussian.argmax() % 576)
 
     cut_shape = (center[0] - input_shape[0] // 2, center[1] - input_shape[1] // 2,
