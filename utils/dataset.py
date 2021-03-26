@@ -1,6 +1,7 @@
 import glob
 import os
 import re
+import pandas as pd
 from tqdm import tqdm
 from shutil import copyfile
 from joblib import Parallel, delayed
@@ -9,9 +10,9 @@ import config as c
 from utils.image_processing import *
 
 
-def get_x(file, data_dir, input_shape, values_linear_transformation=True, center_by_max=False):
+def get_x(file, data_dir, input_shape, values_linear_transformation=True, center_by_max=False, distance_matrices=True):
     file_path = os.path.join(data_dir, file)
-    x = x_preprocessing(x_loader(file_path), input_shape, values_linear_transformation, center_by_max)
+    x = x_preprocessing(x_loader(file_path), input_shape, values_linear_transformation, center_by_max, distance_matrices)
     return x
 
 
@@ -43,7 +44,9 @@ def get_train_data(available_energy_values=[3, 10, 30],
                    input_shape=c.INPUT_SHAPE,
                    values_linear_transformation=True,
                    center_by_max=False,
-                   short_load=False) -> (list, list):
+                   short_load=False,
+                   distance_matrices=True,
+                   return_as_dataframe=False):
     x, y = [], []
     for reaction_type in ['NR', 'ER']:
         data_dir = os.path.join(c.DATASET_DIR, 'train', reaction_type)
@@ -51,17 +54,22 @@ def get_train_data(available_energy_values=[3, 10, 30],
             if short_load:
                 files = files[:300]
             x += Parallel(n_jobs=c.NUM_CORES)\
-                (delayed(get_x)(file, data_dir, input_shape, values_linear_transformation, center_by_max) for file in tqdm(files))
+                (delayed(get_x)(file, data_dir, input_shape, values_linear_transformation, center_by_max, distance_matrices) for file in tqdm(files))
             y += Parallel(n_jobs=c.NUM_CORES)(delayed(get_y)(file, data_dir, reaction_type) for file in tqdm(files))
 
-    x = np.array(x)
-    y = np.array(y)
+    if not return_as_dataframe:
+        x = np.array(x)
+        y = np.array(y)
 
-    available_data = np.isin(y[:, 1], available_energy_values)
-    x = x[available_data]
-    y = y[available_data]
+        available_data = np.isin(y[:, 1], available_energy_values)
+        x = x[available_data]
+        y = y[available_data]
 
-    return x, y
+        return x, y
+    else:
+        df = pd.DataFrame(y, columns=['t', 'e'])
+        df['img_'+str(input_shape[0])] = x
+        return df
 
 
 def get_test_data():  # -> np.ndarray:

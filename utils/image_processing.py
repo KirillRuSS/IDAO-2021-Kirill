@@ -47,7 +47,7 @@ def normalize_channels(img: np.array) -> np.ndarray:
     return img
 
 
-def x_preprocessing(x: np.ndarray, input_shape, values_linear_transformation=True, center_by_max=False) -> np.ndarray:
+def x_preprocessing(x: np.ndarray, input_shape, values_linear_transformation=True, center_by_max=False, distance_matrices=True) -> np.ndarray:
     if c.DIST_MATRIX is None:
         c.DIST_MATRIX = np.mgrid[0:576:1, 0:576:1] - 288
         c.DIST_MATRIX = np.sum(c.DIST_MATRIX ** 2, axis=0) ** 0.5
@@ -55,7 +55,8 @@ def x_preprocessing(x: np.ndarray, input_shape, values_linear_transformation=Tru
         x -= 100
         x /= 255
 
-    x = np.stack((x, c.DIST_MATRIX), axis=2)
+    if distance_matrices:
+        x = np.stack((x, c.DIST_MATRIX), axis=2)
     #x = x[270:310, 270:310, :] / 255
 
     x = crop_image(x, input_shape, center_by_max)
