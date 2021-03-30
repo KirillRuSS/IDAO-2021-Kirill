@@ -72,16 +72,30 @@ def get_train_data(available_energy_values=[3, 10, 30],
         return df
 
 
-def get_test_data():  # -> np.ndarray:
+def get_test_data(input_shape=c.INPUT_SHAPE):
     x = []
+    file_names = []
     data_dir = os.path.join(c.DATASET_DIR, 'public_test')
     for root, dirs, files in os.walk(data_dir):
-        for file in tqdm(files):
-            file_path = os.path.join(data_dir, file)
-            x.append(x_loader(file_path))
+        x += Parallel(n_jobs=c.NUM_CORES) \
+            (delayed(get_x)(file, data_dir, input_shape, False, False, False) for file in tqdm(files))
+        file_names += files
+    df = pd.DataFrame(file_names, columns=['file_names'])
+    df['id'] = df['file_names'].map(lambda file_name: file_name[:-4])
+    df['img_' + str(input_shape[0])] = x
+    return df
 
-    # x = np.array(x)
-    return x
+
+def get_private_test_data():
+    file_names = []
+    data_dir = os.path.join(c.DATASET_DIR, 'private_test')
+    for root, dirs, files in os.walk(data_dir):
+        file_names += files
+    df = pd.DataFrame(file_names, columns=['file_names'])
+    df['id'] = df['file_names'].map(lambda file_name: file_name[:-4])
+    df['classification_predictions'] = 1
+    df['regression_predictions'] = 1
+    return df
 
 
 if __name__ == '__main__':
