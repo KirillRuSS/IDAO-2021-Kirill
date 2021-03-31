@@ -29,6 +29,6 @@ if bool(REMOVE_PATH_VARS):
     except:
         pass
 
-NUM_CORES = multiprocessing.cpu_count()
+NUM_CORES = 1#multiprocessing.cpu_count()
 DIST_MATRIX = None
 SEED = 42

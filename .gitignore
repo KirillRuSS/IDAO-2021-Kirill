@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 /img/
 /test_dataset/
+/catboost_info/
+/catboost_info/
