@@ -18,12 +18,6 @@ def main():
     submission['e'] = 1
     submission = submission[['id', 't', 'e']]
     submission = submission.rename(columns={"t": "classification_predictions", "e": "regression_predictions"})
-    # Проверка, что решение дошло до этой точки
-    print('1')
-    for i in range(5000):
-        for j in range(10000):
-            a = np.power(i, j)
-    print('1')
 
     submission.to_csv('submission.csv', index=False)
 

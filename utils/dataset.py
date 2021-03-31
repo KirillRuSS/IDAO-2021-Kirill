@@ -63,14 +63,20 @@ def get_train_data(available_energy_values=[3, 10, 30],
 def get_test_data(input_shape=c.INPUT_SHAPE):
     x = []
     file_names = []
+    x_circular_ratio_and_bright_sum = []
     data_dir = os.path.join(c.DATASET_DIR, 'public_test')
     for root, dirs, files in os.walk(data_dir):
         files = fnmatch.filter(files, '*.png')
         x += Parallel(n_jobs=c.NUM_CORES)\
             (delayed(get_x)(file, data_dir, input_shape, False, False, False) for file in tqdm(files))
+
+        x_circular_ratio_and_bright_sum += Parallel(n_jobs=c.NUM_CORES) \
+            (delayed(get_circular_ratio_and_bright_sum)(file, data_dir) for file in tqdm(files))
         file_names += files
     df = pd.DataFrame(file_names, columns=['file_names'])
     df['id'] = df['file_names'].map(lambda file_name: file_name[:-4])
+    df['circular_ratio'] = x_circular_ratio_and_bright_sum[:, 0]
+    df['bright_sum'] = x_circular_ratio_and_bright_sum[:, 1]
     df['img_' + str(input_shape[0])] = x
     return df
 
@@ -79,14 +85,20 @@ def get_test_data(input_shape=c.INPUT_SHAPE):
 def get_private_test_data(input_shape=c.INPUT_SHAPE):
     x = []
     file_names = []
+    x_circular_ratio_and_bright_sum = []
     data_dir = os.path.join(c.DATASET_DIR, 'private_test')
     for root, dirs, files in os.walk(data_dir):
         files = fnmatch.filter(files, '*.png')
         x += Parallel(n_jobs=c.NUM_CORES) \
             (delayed(get_x)(file, data_dir, input_shape, False, False, False) for file in tqdm(files))
+
+        x_circular_ratio_and_bright_sum += Parallel(n_jobs=c.NUM_CORES) \
+            (delayed(get_circular_ratio_and_bright_sum)(file, data_dir) for file in tqdm(files))
         file_names += files
     df = pd.DataFrame(file_names, columns=['file_names'])
     df['id'] = df['file_names'].map(lambda file_name: file_name[:-4])
+    df['circular_ratio'] = x_circular_ratio_and_bright_sum[:, 0]
+    df['bright_sum'] = x_circular_ratio_and_bright_sum[:, 1]
     df['img_' + str(input_shape[0])] = x
     return df
 

@@ -1,12 +1,11 @@
 import re
-
 import cv2
 import scipy as sp
 import numpy as np
-import typing as t
 from PIL import Image
 import scipy.ndimage
 from scipy.stats import kurtosis
+from sklearn.decomposition import PCA
 
 import config as c
 
@@ -58,7 +57,7 @@ def x_preprocessing(x: np.ndarray, input_shape, values_linear_transformation=Tru
 
     if distance_matrices:
         x = np.stack((x, c.DIST_MATRIX), axis=2)
-    #x = x[270:310, 270:310, :] / 255
+    # x = x[270:310, 270:310, :] / 255
 
     x = crop_image(x, input_shape, center_by_max)
     return x.astype(np.float32)
@@ -66,9 +65,9 @@ def x_preprocessing(x: np.ndarray, input_shape, values_linear_transformation=Tru
 
 def crop_image(img, input_shape, center_by_max=False, center=None):
     if center is None:
-        center = (img.shape[0]//2, img.shape[1]//2)
+        center = (img.shape[0] // 2, img.shape[1] // 2)
     if center_by_max:
-        img_gaussian = sp.ndimage.filters.gaussian_filter(img[:, :, 0], [3.0, 3.0]) * (img[:, :, 1]<10)
+        img_gaussian = sp.ndimage.filters.gaussian_filter(img[:, :, 0], [3.0, 3.0]) * (img[:, :, 1] < 10)
         center = (img_gaussian.argmax() // 576, img_gaussian.argmax() % 576)
 
     cut_shape = (center[0] - input_shape[0] // 2, center[1] - input_shape[1] // 2,
@@ -148,3 +147,24 @@ def get_bright_sum(img):
     img_gaussian = sp.ndimage.filters.gaussian_filter(img.copy(), [3.0, 3.0])
     gaussian_mask = img_gaussian > np.quantile(img_gaussian, 0.98)  # 112
     return np.sum(img[gaussian_mask] - 100.4) / 1000
+
+
+def get_ellipse_coefficient(img):
+    pca = PCA(n_components=1)
+
+    corr = np.transpose(np.mgrid[0:80:1, 0:80:1], (1, 2, 0))
+    corr = corr[(img > 125) & (~create_circular_mask(80, 80, None, 5))]
+    if len(corr) > 15:
+        pca.fit(corr)
+        return pca.explained_variance_ratio_[0]
+    else:
+        return 0
+
+
+def get_histogram_matrix(img, max_r):
+    hists = []
+    for r in range(max_r):
+        mask = create_circular_mask(80, 80, radius=r + 3) * (~create_circular_mask(80, 80, radius=r))
+        hist, bins = np.histogram(img[mask], range=(80, 180), bins=100)
+        hists.append(hist / np.sum(mask))
+    return np.array(hists) * (max_r - np.arange(1, max_r + 1).reshape(-1, 1))
