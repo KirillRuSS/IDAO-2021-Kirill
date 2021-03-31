@@ -1,9 +1,7 @@
-import glob
 import os
-import re
+import fnmatch
 import pandas as pd
 from tqdm import tqdm
-from shutil import copyfile
 from joblib import Parallel, delayed
 
 import config as c
@@ -16,28 +14,19 @@ def get_x(file, data_dir, input_shape, values_linear_transformation=True, center
     return x
 
 
+def get_circular_ratio_and_bright_sum(file, data_dir):
+    file_path = os.path.join(data_dir, file)
+    img = x_loader(file_path)
+    img = crop_image(img, (250, 250))
+    circular_ratio = get_circular_ratio(img)
+    bright_sum = get_bright_sum(img)
+    return np.array([circular_ratio, bright_sum])
+
+
 def get_y(file, data_dir, reaction_type):
     file_path = os.path.join(data_dir, file)
     y = y_loader(file_path, reaction_type)
     return y
-
-
-def get_generated_data(short_load=False):
-    data_dir = os.path.join(c.DATASET_DIR, 'generated_data')
-
-    files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if re.match(r'[0-9]+.png', f)]
-    files_clean = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if re.match(r'[0-9]+_clean.png', f)]
-    files_noise = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if re.match(r'[0-9]+_noise.png', f)]
-
-    if short_load:
-        files = files[:30000]
-        files_clean = files_clean[:30000]
-        files_noise = files_noise[:30000]
-    images = np.array(Parallel(n_jobs=c.NUM_CORES)(delayed(x_loader)(file) for file in tqdm(files)))
-    images_clean = np.array(Parallel(n_jobs=c.NUM_CORES)(delayed(x_loader)(file) for file in tqdm(files_clean)))
-    images_noise = np.array(Parallel(n_jobs=c.NUM_CORES)(delayed(x_loader)(file) for file in tqdm(files_noise)))
-
-    return images, images_clean, images_noise
 
 
 def get_train_data(available_energy_values=[3, 10, 30],
@@ -48,28 +37,27 @@ def get_train_data(available_energy_values=[3, 10, 30],
                    distance_matrices=True,
                    return_as_dataframe=False):
     x, y = [], []
+    x_circular_ratio_and_bright_sum = []
     for reaction_type in ['NR', 'ER']:
         data_dir = os.path.join(c.DATASET_DIR, 'train', reaction_type)
         for root, dirs, files in os.walk(data_dir):
+            files = fnmatch.filter(files, '*.png')
             if short_load:
                 files = files[:300]
-            x += Parallel(n_jobs=c.NUM_CORES)\
+            x += Parallel(n_jobs=c.NUM_CORES) \
                 (delayed(get_x)(file, data_dir, input_shape, values_linear_transformation, center_by_max, distance_matrices) for file in tqdm(files))
+
+            x_circular_ratio_and_bright_sum += Parallel(n_jobs=c.NUM_CORES) \
+                (delayed(get_circular_ratio_and_bright_sum)(file, data_dir) for file in tqdm(files))
+
             y += Parallel(n_jobs=c.NUM_CORES)(delayed(get_y)(file, data_dir, reaction_type) for file in tqdm(files))
 
-    if not return_as_dataframe:
-        x = np.array(x)
-        y = np.array(y)
-
-        available_data = np.isin(y[:, 1], available_energy_values)
-        x = x[available_data]
-        y = y[available_data]
-
-        return x, y
-    else:
-        df = pd.DataFrame(y, columns=['t', 'e'])
-        df['img_'+str(input_shape[0])] = x
-        return df
+    x_circular_ratio_and_bright_sum = np.array(x_circular_ratio_and_bright_sum)
+    df = pd.DataFrame(y, columns=['t', 'e'])
+    df['circular_ratio'] = x_circular_ratio_and_bright_sum[:, 0]
+    df['bright_sum'] = x_circular_ratio_and_bright_sum[:, 1]
+    df['img_' + str(input_shape[0])] = x
+    return df
 
 
 def get_test_data(input_shape=c.INPUT_SHAPE):
@@ -77,7 +65,8 @@ def get_test_data(input_shape=c.INPUT_SHAPE):
     file_names = []
     data_dir = os.path.join(c.DATASET_DIR, 'public_test')
     for root, dirs, files in os.walk(data_dir):
-        x += Parallel(n_jobs=c.NUM_CORES) \
+        files = fnmatch.filter(files, '*.png')
+        x += Parallel(n_jobs=c.NUM_CORES)\
             (delayed(get_x)(file, data_dir, input_shape, False, False, False) for file in tqdm(files))
         file_names += files
     df = pd.DataFrame(file_names, columns=['file_names'])
@@ -86,23 +75,13 @@ def get_test_data(input_shape=c.INPUT_SHAPE):
     return df
 
 
-def get_private_test_data():
-    file_names = []
-    data_dir = os.path.join(c.DATASET_DIR, 'private_test')
-    for root, dirs, files in os.walk(data_dir):
-        file_names += files
-    df = pd.DataFrame(file_names, columns=['file_names'])
-    df['id'] = df['file_names'].map(lambda file_name: file_name[:-4])
-    df['classification_predictions'] = 1
-    df['regression_predictions'] = 1
-    return df
-
 
 def get_private_test_data(input_shape=c.INPUT_SHAPE):
     x = []
     file_names = []
     data_dir = os.path.join(c.DATASET_DIR, 'private_test')
     for root, dirs, files in os.walk(data_dir):
+        files = fnmatch.filter(files, '*.png')
         x += Parallel(n_jobs=c.NUM_CORES) \
             (delayed(get_x)(file, data_dir, input_shape, False, False, False) for file in tqdm(files))
         file_names += files
@@ -113,4 +92,4 @@ def get_private_test_data(input_shape=c.INPUT_SHAPE):
 
 
 if __name__ == '__main__':
-    get_generated_data(short_load=True)
+    get_train_data(short_load=True, return_as_dataframe=True)

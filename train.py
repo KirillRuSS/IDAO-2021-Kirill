@@ -10,7 +10,6 @@ import tensorflow.keras as k
 import config as c
 import matplotlib.pyplot as plt
 import utils.image_processing as ipr
-import utils.model as model_factory
 from utils.dataset import get_generated_data
 
 

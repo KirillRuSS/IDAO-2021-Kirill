@@ -6,6 +6,7 @@ import numpy as np
 import typing as t
 from PIL import Image
 import scipy.ndimage
+from scipy.stats import kurtosis
 
 import config as c
 
@@ -63,7 +64,7 @@ def x_preprocessing(x: np.ndarray, input_shape, values_linear_transformation=Tru
     return x.astype(np.float32)
 
 
-def crop_image(img, input_shape, center_by_max, center=None):
+def crop_image(img, input_shape, center_by_max=False, center=None):
     if center is None:
         center = (img.shape[0]//2, img.shape[1]//2)
     if center_by_max:
@@ -94,3 +95,56 @@ def image_preprocessing(image):
     # image = np.sum(np.gradient(image), axis=0) + image
     # image[0, 0] = 0.005
     return image.astype(np.float32)
+
+
+def create_circular_mask(h, w, center=None, radius=None):
+    # Создает круговую маску изображения, с требуемым радиусом
+    if center is None:
+        center = (int(w / 2), int(h / 2))
+    if radius is None:
+        radius = min(center[0], center[1], w - center[0], h - center[1])
+
+    Y, X = np.ogrid[:h, :w]
+    dist_from_center = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2)
+
+    mask = dist_from_center <= radius
+    return mask
+
+
+def get_height_map(img):
+    # Получает граффик высот пятна
+    m = np.zeros((15))
+    for r in range(0, 30, 2):
+        mask = create_circular_mask(80, 80, radius=r) * (~create_circular_mask(80, 80, radius=r - 2))
+        m[r // 2] = np.sum(mask * (img - 100.4)) / np.sum(mask)
+    m -= m.min()
+    m /= m.max()
+    return m
+
+
+def get_circular_std(img):
+    return np.std(img * create_circular_mask(80, 80, radius=20))
+
+
+def get_circular_sum(img):
+    return np.sum(img * create_circular_mask(80, 80, radius=20))
+
+
+def get_circular_kurtosis(img):
+    img = sp.ndimage.filters.gaussian_filter(img, [5.0, 5.0])
+    height_map = get_height_map(img)
+    return kurtosis(height_map)
+
+
+def get_circular_ratio(img):
+    img_gaussian = sp.ndimage.filters.gaussian_filter(img.copy(), [3.0, 3.0])
+    gaussian_mask = img_gaussian > np.quantile(img_gaussian, 0.995)
+    r = np.sqrt(np.sum(gaussian_mask) / np.pi)
+    mask = create_circular_mask(250, 250, radius=r)
+    return np.sum(mask * gaussian_mask) / np.sum(mask + gaussian_mask)
+
+
+def get_bright_sum(img):
+    img_gaussian = sp.ndimage.filters.gaussian_filter(img.copy(), [3.0, 3.0])
+    gaussian_mask = img_gaussian > np.quantile(img_gaussian, 0.98)  # 112
+    return np.sum(img[gaussian_mask] - 100.4) / 1000
