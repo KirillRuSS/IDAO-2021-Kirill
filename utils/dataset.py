@@ -73,6 +73,8 @@ def get_test_data(input_shape=c.INPUT_SHAPE):
         x_circular_ratio_and_bright_sum += Parallel(n_jobs=c.NUM_CORES) \
             (delayed(get_circular_ratio_and_bright_sum)(file, data_dir) for file in tqdm(files))
         file_names += files
+
+    x_circular_ratio_and_bright_sum = np.array(x_circular_ratio_and_bright_sum)
     df = pd.DataFrame(file_names, columns=['file_names'])
     df['id'] = df['file_names'].map(lambda file_name: file_name[:-4])
     df['circular_ratio'] = x_circular_ratio_and_bright_sum[:, 0]
@@ -95,6 +97,8 @@ def get_private_test_data(input_shape=c.INPUT_SHAPE):
         x_circular_ratio_and_bright_sum += Parallel(n_jobs=c.NUM_CORES) \
             (delayed(get_circular_ratio_and_bright_sum)(file, data_dir) for file in tqdm(files))
         file_names += files
+
+    x_circular_ratio_and_bright_sum = np.array(x_circular_ratio_and_bright_sum)
     df = pd.DataFrame(file_names, columns=['file_names'])
     df['id'] = df['file_names'].map(lambda file_name: file_name[:-4])
     df['circular_ratio'] = x_circular_ratio_and_bright_sum[:, 0]
