@@ -48,3 +48,13 @@
 </div>
 
 ### Пример масок изображения, по которым идет усреднение высоты:
+<div align="center">
+  <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/5.png" width="900" height="300">
+</div>
+
+### Результаты работы функции get_height_map для частиц ER3 и NR6:
+Как можно заметить, после сглаживания изображения, для минимизации шумов и нормализации по максимуму частицы дают достаточно сильно отличающиеся графики изменения высоты от центра к краю пятна.
+<div align="center">
+  <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/6.png" width="500" height="500">
+</div>
+
