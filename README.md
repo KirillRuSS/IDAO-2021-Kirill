@@ -1,78 +1,78 @@
 # IDAO-2021 qualifying round Kirill Rybkin
-## Задача
-Задача - классифицировать изображения воздействия высокоэнергетических частиц на детектор. Классы: 2 вида частиц, и каждая из них может иметь одно из 6 значений энергий. 
+## Task
+The task is to classify images of the impact of high-energy particles on the detector. Classes: 2 kinds of particles, and each of them can have one of 6 energy values.
 
 <div align="center">
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/0.jpg" width="400" height="400">
   
-  2 вида частиц (ER и NR), для каждой 6 значений энергий.
+  2 types of particles (ER and NR), for each 6 energy values.
 </div>
 
-Для обучения даются только 3 вида энергий для каждого класса, по ним же рассчитывается публичный счет во время соревнования, а приватный счет считается по 3 классам энергий, которых нет в обучающей выборке. Это сделано для проверки на качество работы модели.
+For training, only 3 types of energies are given for each class, the public score is calculated from them during the competition, and the private score is calculated from 3 classes of energies that are not in the training sample. This was done to check the quality of the model.
 
 <div align="center">
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/1.png" width="400" height="400">
   
-  Разделение частиц на обучающую (L) и тестовувю (T) выборки.
+  Separation of particles into training (L) and test (T) samples.
 </div>
 
 
-## В чем особенность данных, или почему сверточные сети не помогут решить задачу?
-Прежде всего стоит вспомнить, что мы работаем с проекциями 3-х мерных результатов реакций взаимодействия высокоэнергетической частицы на плоскость. Об этом говорится в видео-лекции по соревнованию, да и в описании соревнования об этом есть информация. Нам нужно классифицировать изображения на 2 класса видов частиц и на 3 класса энергий.
+## What is the peculiarity of the data, or why convolutional networks will not help solve the problem?
+First of all, it is worth remembering that we are working with projections of 3-dimensional results of interaction reactions of a high-energy particle onto a plane. This is stated in the video lecture on the competition, and there is information about this in the description of the competition. We need to classify images into 2 classes of particle types and 3 classes of energies.
 
-Если не вдаваться в детали процесса формирования изображения, то пятно сформировано из нескольких тысяч точек/фотонов, положение которых определяется нормальным случайным распределением, а значения ‘яркости’ геометрическим распределением (причем сумма их яркостей равна энергии изначальной частицы). Эти точки суммируются попиксельно и формируют пятно. (Может показаться, что изображения с ER 10, 20 и 30 имеют другую природу, но скорее всего там просто пятно размазано по треку).
+Without going into the details of the imaging process, the spot is formed from several thousand dots / photons, the position of which is determined by a normal random distribution, and the values of the ‘brightness’ by a geometric distribution (and the sum of their brightnesses is equal to the energy of the original particle). These points are added pixel by pixel and form a spot. (It may seem that images with ER 10, 20 and 30 are of a different nature, but most likely there is just a smudge on the track).
 
-Можно предположить, что сам процесс взаимодействия частицы с веществом по большей части случаен, а значит и результат взаимодействия в виде изображения сохранит в себе эту случайность. Форма пятна (его радиус) и скорость падения 'яркости' от центра пятна к краям не случайны и зависят от типа частицы, яркость зависит от типа энергии частицы, но вот распределение позиций точек в пятне и их энергии абсолютно случайно.
+It can be assumed that the very process of interaction of a particle with matter is mostly random, and hence the result of the interaction in the form of an image will retain this randomness. The shape of the spot (its radius) and the rate of fall of the 'brightness' from the center of the spot to the edges are not random and depend on the type of particle, the brightness depends on the type of particle energy, but the distribution of positions of points in the spot and their energy is absolutely random.
 
-И может показаться что все предельно просто, и для определения типа частицы достаточно ее радиус посчитать, а для энергии и вовсе просто просуммировать пиксели пятна, вычев из них шум. И да, применив примитивную фильтрацию и сложив яркости пикселей в ядре действительно получается очень точно определять энергию частицы (точность классификации 100%). Однако есть проблема с определением типа частицы. Очень легко можно выделить частицы с длинным треком или даже просто со смещением от центра, а так-как смещение есть только у ER 10, 20, 30 определение их класса не является проблемой. Но вот отличить частицы ER 1 и 3 от NR 1, 3, 6 вызывает проблемы (точность по roc_auc_score=0.9993). Причина как раз в том, что имея столь малую суммарную энергию шумы начинают вносить серьезную ошибку в определение параметров пятна.
+And it may seem that everything is extremely simple, and to determine the type of particle, it is enough to calculate its radius, and for energy, it is simply to sum the pixels of the spot, subtracting noise from them. And yes, by applying primitive filtering and adding the brightness of the pixels in the core, it is really possible to determine the energy of the particle very accurately (classification accuracy is 100%). However, there is a problem with determining the particle type. It is very easy to isolate particles with a long track or even just with an offset from the center, and since only ER 10, 20, 30 have an offset, determining their class is not a problem. But distinguishing particles ER 1 and 3 from NR 1, 3, 6 causes problems (accuracy by roc_auc_score=0.9993). The reason is precisely that, having such a small total energy, noises begin to introduce a serious error in determining the parameters of the spot.
 
 
-## Как происходит определение параметров пятна для последующей классификации?
-Прежде всего нужно уточнить, что речь идет о классификации именно круглых пятен, так как треки можно без проблем классифицировать и без определения их характеристик. Итак, у нас есть два вида пятен, и по изображению без шума снизу можно легко заметить, что они немного отличаются размерами и, что более важно, скоростью снижения яркости от ценра пятна к краям:
+## How is the definition of the spot parameters for the subsequent classification?
+First of all, it should be clarified that we are talking about the classification of exactly round spots, since tracks can be classified without problems even without determining their characteristics. So, we have two types of spots, and in the image without noise from below, you can easily see that they differ slightly in size and, more importantly, in the rate of decrease in brightness from the center of the spot to the edges:
 
 <div align="center">
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/2.jpg" width="600" height="300">
   
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/3.jpg" width="600" height="300">
   
-  Пятна частиц без шума из видео-лекции по соревнованию (https://youtu.be/VzH_58yYz5k?t=2060)
+  Particle spots without noise from the competition video lecture (https://youtu.be/VzH_58yYz5k?t=2060)
 </div>
 
 
-Именно эти характеристики я и пытаюсь выделить с помощью функции get_height_map. В ней изображение разрезается на 30 фрагментов, в виде кругов разного радиуса, и для каждого из них считается среднее значение. Таким образом я получаю что-то вроде топографической карты высот, но так как мы знаем, что пятно - это круг, вместо 2d карты у нас график изменения средней высоты для каждого из значений радиуса.
+It is these characteristics that I am trying to extract using the get_height_map function. In it, the image is cut into 30 fragments, in the form of circles of different radii, and the average value is calculated for each of them. This way I get something like a topographic height map, but since we know that the spot is a circle, instead of a 2d map, we have a graph of the change in the average height for each of the radius values.
 
 <div align="center">
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/4.jpg" width="500" height="400">
   
-  Карта высот 
+  Height map
 </div>
 
-### Пример масок изображения, по которым идет усреднение высоты:
+### An example of image masks over which the height is averaged:
 <div align="center">
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/5.png" width="900" height="300">
 </div>
 
-### Результаты работы функции get_height_map для частиц ER3 и NR6:
-Как можно заметить, после сглаживания изображения, для минимизации шумов и нормализации по максимуму частицы дают достаточно сильно отличающиеся графики изменения высоты от центра к краю пятна.
+### The results of the get_height_map function for ER3 and NR6 particles:
+As you can see, after smoothing the image, to minimize noise and normalize to the maximum, the particles give quite different plots of height change from the center to the edge of the spot.
 <div align="center">
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/6.png" width="400" height="400">
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/7.png" width="400" height="400">
 </div>
 
-## Итоговый резульат
+## Final result
 
 <div align="center">
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/9.jpg" width="800" height="800">
 </div>
 
-В качестве окончательной модели я использовал catboost для классификации изображений по типу частиц и пороговых значений для классификации по энергии. Окончательная оценка модели составляет около 0,999.
+As a final model, I used catboost to classify images by particle type and thresholds for classifying by energy. The final score of the model is about 0.999.
 
 <div align="center">
   <img src="https://github.com/Oxonomy/IDAO-2021-Kirill/blob/main/8.png" width="500" height="500">
 </div>
 
-Поскольку данные о публичных и частных данных сильно различались, я не добавлял в модель прогнозы публичных данных, и это было не лучшим решением.
+Since the data on public and private data were very different, I did not add public data predictions to the model, and this was not the best solution.
 
-Я перепутал классы частиц, и модель предсказала тип частицы наоборот. Соответственно auk был около 0,036.
+I mixed up the particle classes and the model predicted the particle type in reverse. Accordingly, auk was about 0.036.
 
-Однако энергетическая классификация была правильной, и у средняя абсолютная ошибка была около 0,07. Так что итоговый результат был неплохим, результат на ЛБ -38 и седьмое место. Без этой ошибки результат был бы около 900 и  второе место.
+However, the energy classification was correct and the mean absolute error was about 0.07. So the final result was not bad, the result in the LB was -38 and seventh place. Without this error, the result would have been around 900 and second place.
